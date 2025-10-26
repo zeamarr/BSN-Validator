@@ -7,7 +7,9 @@ variables:
 
 stages:
   - build
+  - deploy-dev
   - test
+  - deploy-test
   - build-sonar
   - deploy
 
@@ -22,6 +24,13 @@ build:
     paths:
       - target/*jar
 
+deploy-dev:
+  stage: deploy-dev
+  script:
+    - curl -X POST "$RENDER_DEPLOY_HOOK_DEV"
+  only:
+    - dev
+
 test:
   stage: test
   tags:
@@ -29,6 +38,13 @@ test:
   image: maven:3.9.11
   script:
     - mvn test
+
+deploy-test:
+  stage: deploy-dev
+  script:
+    - curl -X POST "$RENDER_DEPLOY_HOOK_TEST"
+  only:
+    - test
 
 build-sonar:
   stage: build-sonar
