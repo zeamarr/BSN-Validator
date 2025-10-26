@@ -6,8 +6,26 @@ variables:
   GIT_DEPTH: "0"  # Tells git to fetch all the branches of the project, required by the analysis task
 
 stages:
+  - build
+  - test
   - build-sonar
+  - docker
+  - deploy
 
+build:
+  stage: build
+  image: maven:3.9.11
+  script:
+    - mvn clean package -DskipTests
+  artifacts:
+    paths:
+      - target/*jar
+
+test:
+  stage: test
+  image: maven:3.9.11
+  script:
+    - mvn test
 
 build-sonar:
   stage: build-sonar
@@ -30,3 +48,23 @@ build-sonar:
     - if: $CI_COMMIT_BRANCH == 'master'
     - if: $CI_COMMIT_BRANCH == 'main'
     - if: $CI_COMMIT_BRANCH == 'develop'
+
+docker:
+  stage: docker
+  image: docker:24.0.5
+  services:
+    - docker:dind
+  script:
+    - docker build -t $DOCKER_IMAGE .
+    - docker tag $DOCKER_IMAGE registry.gitlab.com/$CI_PROJECT_PATH:$CI_COMMIT_SHORT_SHA
+    - docker push registry.gitlab.com/$CI_PROJECT_PATH:$CI_COMMIT_SHORT_SHA
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  script:
+    - echo "Deploying on Render"
+    - curl -X POST "$RENDER_DEPLOY_HOOK"
+  only:
+    - main
